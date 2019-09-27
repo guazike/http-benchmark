@@ -10,15 +10,19 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"regexp"
 	"runtime"
 	"strconv"
+
+	// "stringUtils"
 	"strings"
 	"time"
 )
 
 type TestUnit struct {
+	UserId  string            `json:"-"`
 	Enabled bool              `json:"enabled"`
-	Weight  int               `json:"weight"`
+	reqNum  int               `json:"reqNum"`
 	Method  string            `json:"method"`
 	Path    string            `json:"path"`
 	Headers map[string]string `json:"headers"`
@@ -26,26 +30,25 @@ type TestUnit struct {
 	Body    map[string]string `json:"body"`
 }
 type LoginConfig struct {
-	AccountPrefix string   `json:"accountPrefix"`
-	AccountFrom   int      `json:"accountFrom"`
-	AccountTo     int      `json:"accountTo"`
-	Passwd        string   `json:"passwd"`
-	JoinInterval  int      `json:"joinInterval"`
-	Request       TestUnit `json:"request"`
+	Request TestUnit `json:"request"`
 }
 
 type ConfigObj struct {
-	Protocol     string      `json:"protocol"`
-	Host         string      `json:"host"`
-	Port         string      `json:"port"`
-	Login        LoginConfig `json:"login"`
-	NextDelay    int64       `json:nextDelay`
-	PreRequests  []TestUnit  `json:"preRequests"`
-	RandRequests []TestUnit  `json:"randRequests"`
+	Protocol      string     `json:"protocol"`
+	Host          string     `json:"host"`
+	Port          string     `json:"port"`
+	AccountPrefix string     `json:"accountPrefix"`
+	AccountFrom   int        `json:"accountFrom"`
+	AccountTo     int        `json:"accountTo"`
+	Passwd        string     `json:"passwd"`
+	JoinInterval  int64      `json:"joinInterval"`
+	NextDelay     int64      `json:nextDelay`
+	PreRequests   []TestUnit `json:"preRequests"`
+	RandRequests  []TestUnit `json:"randRequests"`
 }
 
 type SequeenRequests struct {
-	Reqs      []*http.Request
+	Reqs      []*TestUnit
 	SendIndex int
 	NextDelay int64
 }
@@ -58,14 +61,18 @@ func main() {
 	fmt.Println("cpu num:", runtime.NumCPU())
 	runtime.GOMAXPROCS(runtime.NumCPU() - 1)
 
-	protocol := "https"
+	configFile := "config_http_demo.json"
 	if len(os.Args) > 1 {
-		protocol = os.Args[1]
+		configFile = os.Args[1]
+	}
+	protocol := "https"
+	if len(os.Args) > 2 {
+		configFile = os.Args[2]
 	}
 	switch protocol {
 	case "http":
 	case "https":
-		confObj := parseHttpConfig()
+		confObj := parseHttpConfig("configs/" + configFile)
 		// reqs := initRequests(confObj)
 		StartHttpTest(confObj)
 	case "tcp":
@@ -79,15 +86,17 @@ func main() {
 	<-end
 }
 
-func parseHttpConfig() *ConfigObj {
-	fmt.Println("----init http config----")
-	conf, err := ioutil.ReadFile("config_http.json")
+func parseHttpConfig(fileName string) *ConfigObj {
+	fmt.Println("----init http config:", fileName)
+	conf, err := ioutil.ReadFile(fileName)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 	confObj := &ConfigObj{}
-	err = json.Unmarshal(conf, confObj)
+	noRemarkCont := string(conf)
+	noRemarkCont = ReplaceComment(noRemarkCont)
+	err = json.Unmarshal([]byte(noRemarkCont), confObj)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -112,6 +121,7 @@ func buildRequest(testUnit *TestUnit) *http.Request {
 	for k, v := range testUnit.Headers {
 		req.Header.Set(k, v)
 	}
+	req.Header.Set("uid", testUnit.UserId)
 
 	//cookie
 	for k, v := range testUnit.Cookies {
@@ -124,49 +134,42 @@ func buildRequest(testUnit *TestUnit) *http.Request {
 func StartHttpTest(confObj *ConfigObj) {
 	fmt.Println("----StartHttpTest----")
 	preUrl = confObj.Protocol + "://" + confObj.Host + confObj.Port
-	interval := confObj.Login.JoinInterval
-	lastTime := time.Now().Nanosecond()
-	totalUser := confObj.Login.AccountTo - confObj.Login.AccountFrom
+	interval := confObj.JoinInterval
+	lastTime := time.Now().UnixNano() / int64(time.Millisecond)
+	totalUser := confObj.AccountTo - confObj.AccountFrom
+	fmt.Println("totalUser:", totalUser)
 	loginIndex := 0
 	for {
-		nowTime := time.Now().Nanosecond()
+		nowTime := time.Now().UnixNano() / int64(time.Millisecond)
 		if nowTime-lastTime > interval {
 			lastTime = nowTime
 			currLoginIndex := loginIndex
-			loginIndex++
 			if loginIndex >= totalUser {
-				fmt.Println("==== all users have joined ! =====")
+				fmt.Println("==== all users have start session ! =====")
 				break
 			}
+			fmt.Println("----startSession:", currLoginIndex)
 			go startSession(currLoginIndex, confObj)
+			loginIndex++
 		}
 	}
 }
 
 func startSession(currLoginIndex int, confObj *ConfigObj) {
-	var userId string
+	userId := confObj.AccountPrefix + strconv.Itoa(confObj.AccountFrom+currLoginIndex)
 	// var token string
-	//需要登录
-	if confObj.Login.Request.Enabled {
-		userId = confObj.Login.AccountPrefix + strconv.Itoa(confObj.Login.AccountFrom+currLoginIndex)
-		// passwd := confObj.Login.Passwd//t
-		// fmt.Println("----startSession:", currLoginIndex, "userId:", userId, " passwd:", passwd)
+	// passwd := confObj.Passwd//t
+	// fmt.Println("userId:", userId)
 
-		//t 暂时取消登录
-		// loginReq := buildRequest(&(confObj.Login.Request))
-		// sendHttp(loginReq)
-
-	}
-
-	//预先请求
-	preRequests := []*http.Request{}
-	for _, reqConf := range confObj.PreRequests {
+	//优先请求
+	preRequests := []*TestUnit{}
+	for _, testUnit := range confObj.PreRequests {
+		reqConf := testUnit
+		reqConf.UserId = userId
 		if !reqConf.Enabled {
 			continue
 		}
-		req := buildRequest(&reqConf)
-		req.Header.Set("uid", userId)
-		preRequests = append(preRequests, req)
+		preRequests = append(preRequests, &reqConf)
 	}
 	// fmt.Println("----preRequests len:", len(preRequests))
 	if len(preRequests) > 0 {
@@ -178,14 +181,14 @@ func startSession(currLoginIndex int, confObj *ConfigObj) {
 	}
 
 	//循环请求
-	randRequests := []*http.Request{}
-	for _, reqConf := range confObj.RandRequests {
+	randRequests := []*TestUnit{}
+	for _, testUnit := range confObj.RandRequests {
+		reqConf := testUnit
+		reqConf.UserId = userId
 		if !reqConf.Enabled {
 			continue
 		}
-		req := buildRequest(&reqConf)
-		req.Header.Set("uid", userId)
-		randRequests = append(randRequests, req)
+		randRequests = append(randRequests, &reqConf)
 	}
 	// fmt.Println("----randRequests len:", len(randRequests))
 	if len(randRequests) > 0 {
@@ -199,22 +202,23 @@ func sendSequenRequests(sequeenReq *SequeenRequests) {
 		// fmt.Println("----sendSequenRequests finish-----")
 		return
 	}
-	sendHttp(sequeenReq.Reqs[sequeenReq.SendIndex])
+	sendRequest(sequeenReq.Reqs[sequeenReq.SendIndex])
 	sequeenReq.SendIndex++
 	time.Sleep(time.Duration(sequeenReq.NextDelay) * time.Second)
 	sendSequenRequests(sequeenReq)
 }
 
 //重复性随机请求
-func sendRandRequests(nextDelay int64, randRequests []*http.Request) {
+func sendRandRequests(nextDelay int64, randRequests []*TestUnit) {
 	requestIndex := rand.Intn(len(randRequests))
-	sendHttp(randRequests[requestIndex])
+	sendRequest(randRequests[requestIndex])
 	time.Sleep(time.Duration(nextDelay) * time.Second)
 	sendRandRequests(nextDelay, randRequests)
 }
 
-func sendHttp(req *http.Request) []byte {
-	// fmt.Println("----sendHttp:", req.URL)
+func sendRequest(reqConf *TestUnit) []byte {
+	req := buildRequest(reqConf)
+	// fmt.Println("----sendRequest:", req.URL)
 	rsp, err := (&http.Client{}).Do(req)
 	if err != nil {
 		fmt.Println(err)
@@ -225,6 +229,23 @@ func sendHttp(req *http.Request) []byte {
 		return []byte("{}")
 	}
 	defer rsp.Body.Close()
-	fmt.Println("rsp:", string(respData))
+	respStr := string(respData)
+	if strings.Index(respStr, "{\"code\":0,") != 0 {
+		fmt.Println("rsp:", respStr)
+	}
 	return respData
+}
+
+//-----------------
+//删除代码中的//和/**/注释
+func ReplaceComment(noRemarkCont string) string {
+	lineRegPatten := `\/\/[^\n]*`
+	blockRegPatten := `\/\*.*?\*\/`
+
+	lineReg, _ := regexp.Compile(lineRegPatten)
+	blockReg, _ := regexp.Compile(blockRegPatten)
+
+	noRemarkCont = lineReg.ReplaceAllString(noRemarkCont, "")
+	noRemarkCont = blockReg.ReplaceAllString(noRemarkCont, "")
+	return noRemarkCont
 }
