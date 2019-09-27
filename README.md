@@ -2,7 +2,7 @@
 benchmark for testing http request.
 
 ## 简介
-  一个http压力测试工具。只需要在配置文件里填充一些测试路径和参数等信息，就可以直接测试了。<br>
+  一个非常方便使用的http压力测试工具。只需要在配置文件里填充一些测试路径和参数等信息，就可以直接测试了。<br>
 具体参照<a href="https://github.com/guazike/http-benchmark/blob/master/src/configs/config_http_demo.json">配置样本</a>。<br>
 可以设置测试账号范围、密码<br>
 可以指定每个请求的body header coockie<br>
