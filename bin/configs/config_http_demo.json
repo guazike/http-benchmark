@@ -1,0 +1,72 @@
+{//http压力测试配置。请预先生成测试账号。账号可以由前缀+序号组成，前缀可以为空，此时账号由序号组成
+	"protocol":"https",//http或者https
+	"host":"www.xxxx.com",//要测试的服务的域名
+	"port":"",//要测试的服务的端口，如":80",":8080"
+	//账号设置
+	"accountPrefix":"",//账号前缀，与账号序号拼接成完整账号
+	"accountFrom":10000,//起始测试账号序号
+	"accountTo":10500,//结束测试账号序号,//测试500个账号同时在线
+	"passwd":"$2a$10$qfNeLNdX.98wNiYsYIJ3cuGzFFasWKk9FnSgcSh83qMnelVWU7Uj2",//测试账号用相同的密码或token
+	//时间延迟设置
+	"nextDelay":3,//一个会话中完成一个请求后,发起下一个请求的时间间隔。单位:秒
+	"joinInterval":20,//创建会话的间隔，单位：毫秒。每个会话都单独执行下面的requests
+	
+	//preRequests为优先发起请求，按顺序发起
+	"preRequests":[
+		{//login
+			"enabled":true,//为false时该请求将被忽视
+			"reqNum":1,//可以请求的次数，-1表示无限次
+			"method":"PUT",
+			"path":"/api/user/login/common",
+			"headers":{//注意，目前value都要用字符串，由服务器端最终决定以什么数据类型读取
+				"Content-Type":"application/x-www-form-urlencoded", "uid":"{$uid$}", "app-ver":"3.0.1", "os":"0", "lang":"zh_cn",
+				"req-id":"c4b210e2-2f81-{$uid$}-{$timestamp$}-{$rand$}",
+				"token":"$2a$10$qfNeLNdX.98wNiYsYIJ3cuGzFFasWKk9FnSgcSh83qMnelVWU7Uj2"
+			},
+			"coockies":{},//注意，目前value都要用字符串，由服务器端最终决定以什么数据类型读取
+			"body":{//注意，目前value都要用字符串，由服务器端最终决定以什么数据类型读取
+				"os":"0", "sdk":"6.0.1","model":"vivo Y53", "push-token":"", "bpush-kind":"0", 
+				"bpush-token":"0865217036581209300002441800CN01", "AppVer":"{\"Major\":3,\"Minor\":0,\"Revision\":0}"
+			}
+		},
+		{//申请加入圈子
+			"enabled":false,
+			"reqNum":1,
+			"method":"PUT",
+			"path":"/api/circle/apply",
+			"headers":{
+				"Content-Type":"application/x-www-form-urlencoded", "uid":"{$uid$}", "app-ver":"3.0.1", "os":"0", "lang":"zh_cn",
+				"req-id":"c4b210e2-2f81-{$uid$}-{$timestamp$}-{$rand$}",
+				"token":"$2a$10$qfNeLNdX.98wNiYsYIJ3cuGzFFasWKk9FnSgcSh83qMnelVWU7Uj2"
+			},
+			"coockies":{},
+			"body":{
+				"ci_id":"1176777889811529728",
+				"msg":"",
+				"cert":"",
+				"audit":"1"
+			}
+		}
+	],
+	//randRequests为随机请求。完成发起所有preRequests后再发起randRequests
+	"randRequests":[
+		{
+			"enabled":true,
+			"reqNum":-1,
+			"method":"PUT",
+			"path":"/api/mqtt/user/board/lbs",
+			"headers":{
+				"Content-Type":"application/x-www-form-urlencoded", "uid":"{$uid$}", "app-ver":"3.0.1", "os":"0", "lang":"zh_cn",
+				"req-id":"c4b210e2-2f81-{$uid$}-{$timestamp$}-{$rand$}",
+				"token":"$2a$10$qfNeLNdX.98wNiYsYIJ3cuGzFFasWKk9FnSgcSh83qMnelVWU7Uj2"
+			},
+			"coockies":{},
+			"body":{
+				"lat":"30.714277",
+				"lng":"104.060562",
+				"accuracy":"30.0"
+			}
+		}
+	]
+	
+}
