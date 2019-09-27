@@ -12,7 +12,8 @@ import (
 	"os/signal"
 	"runtime"
 	"strconv"
-	"stringUtils"
+
+	// "stringUtils"
 	"strings"
 	"time"
 )
@@ -93,7 +94,7 @@ func parseHttpConfig(fileName string) *ConfigObj {
 	}
 	confObj := &ConfigObj{}
 	noRemarkCont := string(conf)
-	noRemarkCont = stringUtils.ReplaceComment(noRemarkCont)
+	noRemarkCont = ReplaceComment(noRemarkCont)
 	err = json.Unmarshal([]byte(noRemarkCont), confObj)
 	if err != nil {
 		fmt.Println(err)
@@ -232,4 +233,18 @@ func sendHttp(reqConf *TestUnit) []byte {
 		fmt.Println("rsp:", respStr)
 	}
 	return respData
+}
+
+//-----------------
+//删除代码中的//和/**/注释
+func ReplaceComment(noRemarkCont string) string {
+	lineRegPatten := `\/\/[^\n]*`
+	blockRegPatten := `\/\*.*?\*\/`
+
+	lineReg, _ := regexp.Compile(lineRegPatten)
+	blockReg, _ := regexp.Compile(blockRegPatten)
+
+	noRemarkCont = lineReg.ReplaceAllString(noRemarkCont, "")
+	noRemarkCont = blockReg.ReplaceAllString(noRemarkCont, "")
+	return noRemarkCont
 }
