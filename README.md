@@ -18,7 +18,7 @@ benchmark for testing http request.
 
 ## 编译
 依赖：go sdk
-cd src
+cd src<br>
 go build http-benchmark.go
 
 ## 运行
