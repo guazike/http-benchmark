@@ -1,0 +1,70 @@
+{
+	"protocol":"https",
+	"host":"dev.supapp.cn",
+	"port":"",
+	"nextDelay":3,
+	"login":{
+		"accountPrefix":"",
+		"accountFrom":11000,
+		"accountTo":12000,
+		"passwd":"$2a$10$qfNeLNdX.98wNiYsYIJ3cuGzFFasWKk9FnSgcSh83qMnelVWU7Uj2",
+		"joinInterval":20,
+		
+		"request":{
+			"enabled":true,
+			"weight":0,
+			"method":"PUT",
+			"path":"/api/user/login/common",
+			"headers":{
+				"Content-Type":"application/x-www-form-urlencoded", "uid":"{$uid$}", "app-ver":"3.0.1", "os":"0", "lang":"zh_cn",
+				"req-id":"c4b210e2-2f81-{$uid$}-{$timestamp$}-{$rand$}",
+				"token":"$2a$10$qfNeLNdX.98wNiYsYIJ3cuGzFFasWKk9FnSgcSh83qMnelVWU7Uj2"
+			},
+			"coockies":{},
+			"body":{
+				"os":"0", "sdk":"6.0.1","model":"vivo Y53", "push-token":"", "bpush-kind":"0", 
+				"bpush-token":"0865217036581209300002441800CN01", "AppVer":"{\"Major\":3,\"Minor\":0,\"Revision\":0}"
+			}
+		}
+			
+	},
+	"preRequests":[
+		{
+			"enabled":true,
+			"weight":0,
+			"method":"PUT",
+			"path":"/api/circle/apply",
+			"headers":{
+				"Content-Type":"application/x-www-form-urlencoded", "uid":"{$uid$}", "app-ver":"3.0.1", "os":"0", "lang":"zh_cn",
+				"req-id":"c4b210e2-2f81-{$uid$}-{$timestamp$}-{$rand$}",
+				"token":"$2a$10$qfNeLNdX.98wNiYsYIJ3cuGzFFasWKk9FnSgcSh83qMnelVWU7Uj2"
+			},
+			"coockies":{},
+			"body":{
+				"ci_id":"1176790367220006940",
+				"msg":"",
+				"cert":"",
+				"audit":"1"
+			}
+		}
+	],
+	"randRequests":[
+		{
+			"enabled":false,
+			"weight":0,
+			"method":"GET",
+			"path":"/friends",
+			"headers":{
+				"Content-Type":"application/x-www-form-urlencoded", "uid":"{$uid$}", "app-ver":"3.0.1", "os":"0", "lang":"zh_cn",
+				"req-id":"c4b210e2-2f81-{$uid$}-{$timestamp$}-{$rand$}",
+				"token":"$2a$10$qfNeLNdX.98wNiYsYIJ3cuGzFFasWKk9FnSgcSh83qMnelVWU7Uj2"
+			},
+			"coockies":{},
+			"body":{
+				"param1":"value",
+				"param2":"1"
+			}
+		}
+	]
+	
+}

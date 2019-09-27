@@ -1,0 +1,71 @@
+{
+	"protocol":"https",
+	"host":"dev.supapp.cn",
+	"port":"",
+	//账号设置
+	"accountPrefix":"",
+	"accountFrom":10500,
+	"accountTo":11000,//110000,
+	"passwd":"$2a$10$qfNeLNdX.98wNiYsYIJ3cuGzFFasWKk9FnSgcSh83qMnelVWU7Uj2",
+	//时间延迟设置
+	"joinInterval":20,//创建会话的间隔，单位：毫秒
+	"nextDelay":3,//一个会话中完成完成一个请求后发起下一个请求的时间间隔。
+	//前置顺序请求
+	"preRequests":[
+		{//login
+			"enabled":true,
+			"reqNum":1,
+			"method":"PUT",
+			"path":"/api/user/login/common",
+			"headers":{
+				"Content-Type":"application/x-www-form-urlencoded", "uid":"{$uid$}", "app-ver":"3.0.1", "os":"0", "lang":"zh_cn",
+				"req-id":"c4b210e2-2f81-{$uid$}-{$timestamp$}-{$rand$}",
+				"token":"$2a$10$qfNeLNdX.98wNiYsYIJ3cuGzFFasWKk9FnSgcSh83qMnelVWU7Uj2"
+			},
+			"coockies":{},
+			"body":{
+				"os":"0", "sdk":"6.0.1","model":"vivo Y53", "push-token":"", "bpush-kind":"0", 
+				"bpush-token":"0865217036581209300002441800CN01", "AppVer":"{\"Major\":3,\"Minor\":0,\"Revision\":0}"
+			}
+		},
+		{//申请加入圈子
+			"enabled":false,
+			"reqNum":1,
+			"method":"PUT",
+			"path":"/api/circle/apply",
+			"headers":{
+				"Content-Type":"application/x-www-form-urlencoded", "uid":"{$uid$}", "app-ver":"3.0.1", "os":"0", "lang":"zh_cn",
+				"req-id":"c4b210e2-2f81-{$uid$}-{$timestamp$}-{$rand$}",
+				"token":"$2a$10$qfNeLNdX.98wNiYsYIJ3cuGzFFasWKk9FnSgcSh83qMnelVWU7Uj2"
+			},
+			"coockies":{},
+			"body":{
+				"ci_id":"1176777889811529728",
+				"msg":"",
+				"cert":"",
+				"audit":"1"
+			}
+		}
+	],
+	//随机请求
+	"randRequests":[
+		{
+			"enabled":true,
+			"reqNum":-1,
+			"method":"PUT",
+			"path":"/api/mqtt/user/board/lbs",
+			"headers":{
+				"Content-Type":"application/x-www-form-urlencoded", "uid":"{$uid$}", "app-ver":"3.0.1", "os":"0", "lang":"zh_cn",
+				"req-id":"c4b210e2-2f81-{$uid$}-{$timestamp$}-{$rand$}",
+				"token":"$2a$10$qfNeLNdX.98wNiYsYIJ3cuGzFFasWKk9FnSgcSh83qMnelVWU7Uj2"
+			},
+			"coockies":{},
+			"body":{
+				"lat":"30.714277",
+				"lng":"104.060562",
+				"accuracy":"30.0"
+			}
+		}
+	]
+	
+}

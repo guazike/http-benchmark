@@ -1,0 +1,230 @@
+// httpTest.go
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"math/rand"
+	"net/http"
+	"net/url"
+	"os"
+	"os/signal"
+	"runtime"
+	"strconv"
+	"strings"
+	"time"
+)
+
+type TestUnit struct {
+	Enabled bool              `json:"enabled"`
+	Weight  int               `json:"weight"`
+	Method  string            `json:"method"`
+	Path    string            `json:"path"`
+	Headers map[string]string `json:"headers"`
+	Cookies map[string]string `json:"coockies"`
+	Body    map[string]string `json:"body"`
+}
+type LoginConfig struct {
+	AccountPrefix string   `json:"accountPrefix"`
+	AccountFrom   int      `json:"accountFrom"`
+	AccountTo     int      `json:"accountTo"`
+	Passwd        string   `json:"passwd"`
+	JoinInterval  int      `json:"joinInterval"`
+	Request       TestUnit `json:"request"`
+}
+
+type ConfigObj struct {
+	Protocol     string      `json:"protocol"`
+	Host         string      `json:"host"`
+	Port         string      `json:"port"`
+	Login        LoginConfig `json:"login"`
+	NextDelay    int64       `json:nextDelay`
+	PreRequests  []TestUnit  `json:"preRequests"`
+	RandRequests []TestUnit  `json:"randRequests"`
+}
+
+type SequeenRequests struct {
+	Reqs      []*http.Request
+	SendIndex int
+	NextDelay int64
+}
+
+var (
+	preUrl = ""
+)
+
+func main() {
+	fmt.Println("cpu num:", runtime.NumCPU())
+	runtime.GOMAXPROCS(runtime.NumCPU() - 1)
+
+	protocol := "https"
+	if len(os.Args) > 1 {
+		protocol = os.Args[1]
+	}
+	switch protocol {
+	case "http":
+	case "https":
+		confObj := parseHttpConfig()
+		// reqs := initRequests(confObj)
+		StartHttpTest(confObj)
+	case "tcp":
+
+	}
+
+	// exit event
+	fmt.Println("[ctrl+c to exit]")
+	end := make(chan os.Signal, 2)
+	signal.Notify(end, os.Interrupt, os.Kill)
+	<-end
+}
+
+func parseHttpConfig() *ConfigObj {
+	fmt.Println("----init http config----")
+	conf, err := ioutil.ReadFile("config_http.json")
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	confObj := &ConfigObj{}
+	err = json.Unmarshal(conf, confObj)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	return confObj
+}
+
+func buildRequest(testUnit *TestUnit) *http.Request {
+	sendData := url.Values{}
+
+	for k, v := range testUnit.Body {
+		sendData.Add(k, v)
+	}
+	req, err := http.NewRequest(testUnit.Method, preUrl+testUnit.Path, strings.NewReader(sendData.Encode()))
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+		return nil
+	}
+	//header
+	for k, v := range testUnit.Headers {
+		req.Header.Set(k, v)
+	}
+
+	//cookie
+	for k, v := range testUnit.Cookies {
+		req.AddCookie(&http.Cookie{Name: k, Value: v})
+	}
+
+	return req
+}
+
+func StartHttpTest(confObj *ConfigObj) {
+	fmt.Println("----StartHttpTest----")
+	preUrl = confObj.Protocol + "://" + confObj.Host + confObj.Port
+	interval := confObj.Login.JoinInterval
+	lastTime := time.Now().Nanosecond()
+	totalUser := confObj.Login.AccountTo - confObj.Login.AccountFrom
+	loginIndex := 0
+	for {
+		nowTime := time.Now().Nanosecond()
+		if nowTime-lastTime > interval {
+			lastTime = nowTime
+			currLoginIndex := loginIndex
+			loginIndex++
+			if loginIndex >= totalUser {
+				fmt.Println("==== all users have joined ! =====")
+				break
+			}
+			go startSession(currLoginIndex, confObj)
+		}
+	}
+}
+
+func startSession(currLoginIndex int, confObj *ConfigObj) {
+	var userId string
+	// var token string
+	//需要登录
+	if confObj.Login.Request.Enabled {
+		userId = confObj.Login.AccountPrefix + strconv.Itoa(confObj.Login.AccountFrom+currLoginIndex)
+		// passwd := confObj.Login.Passwd//t
+		// fmt.Println("----startSession:", currLoginIndex, "userId:", userId, " passwd:", passwd)
+
+		//t 暂时取消登录
+		// loginReq := buildRequest(&(confObj.Login.Request))
+		// sendHttp(loginReq)
+
+	}
+
+	//预先请求
+	preRequests := []*http.Request{}
+	for _, reqConf := range confObj.PreRequests {
+		if !reqConf.Enabled {
+			continue
+		}
+		req := buildRequest(&reqConf)
+		req.Header.Set("uid", userId)
+		preRequests = append(preRequests, req)
+	}
+	// fmt.Println("----preRequests len:", len(preRequests))
+	if len(preRequests) > 0 {
+		sequeenReqs := &SequeenRequests{
+			Reqs:      preRequests,
+			NextDelay: confObj.NextDelay,
+		}
+		sendSequenRequests(sequeenReqs)
+	}
+
+	//循环请求
+	randRequests := []*http.Request{}
+	for _, reqConf := range confObj.RandRequests {
+		if !reqConf.Enabled {
+			continue
+		}
+		req := buildRequest(&reqConf)
+		req.Header.Set("uid", userId)
+		randRequests = append(randRequests, req)
+	}
+	// fmt.Println("----randRequests len:", len(randRequests))
+	if len(randRequests) > 0 {
+		sendRandRequests(confObj.NextDelay, randRequests)
+	}
+}
+
+//一次性顺序请求
+func sendSequenRequests(sequeenReq *SequeenRequests) {
+	if sequeenReq.SendIndex >= len(sequeenReq.Reqs) {
+		// fmt.Println("----sendSequenRequests finish-----")
+		return
+	}
+	sendHttp(sequeenReq.Reqs[sequeenReq.SendIndex])
+	sequeenReq.SendIndex++
+	time.Sleep(time.Duration(sequeenReq.NextDelay) * time.Second)
+	sendSequenRequests(sequeenReq)
+}
+
+//重复性随机请求
+func sendRandRequests(nextDelay int64, randRequests []*http.Request) {
+	requestIndex := rand.Intn(len(randRequests))
+	sendHttp(randRequests[requestIndex])
+	time.Sleep(time.Duration(nextDelay) * time.Second)
+	sendRandRequests(nextDelay, randRequests)
+}
+
+func sendHttp(req *http.Request) []byte {
+	// fmt.Println("----sendHttp:", req.URL)
+	rsp, err := (&http.Client{}).Do(req)
+	if err != nil {
+		fmt.Println(err)
+		return []byte("{}")
+	}
+	var respData []byte
+	if respData, err = ioutil.ReadAll(rsp.Body); err != nil {
+		return []byte("{}")
+	}
+	defer rsp.Body.Close()
+	fmt.Println("rsp:", string(respData))
+	return respData
+}
